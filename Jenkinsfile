@@ -55,14 +55,13 @@ pipeline {
                 }*/
             }
         }
-        
-        post {
+    
+    }
+    post {
 
             success {
                 sh 'docker stop pandaapp'
                 deleteDir()
             }
         }
-        
-    }
 }
