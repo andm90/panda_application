@@ -1,84 +1,60 @@
 pipeline {
-    agent {
-        label 'Slave'
+    agent{
+        label 'jamesbond'
     }
+
     tools {
         // Install the Maven version configured as "M3" and add it to the path.
         maven "M3"
-        terraform 'Terraform'
     }
-    environment {
-        IMAGE = readMavenPom().getArtifactId()
-        VERSION = readMavenPom().getVersion()
-        ANSIBLE = tool name: 'Ansible', type: 'com.cloudbees.jenkins.plugins.customtools.CustomTool'
-    }
-  
+
     stages {
-        stage('Clear running apps') {
-           steps {
-               // Clear previous instances of app built
-               sh 'docker rm -f pandaapp || true'
-           }
+        
+        stage('Clear running apps'){
+            steps{
+                
+                sh 'docker rm -f pandaapp || true'
+            }
+            
         }
-        stage('Get Code') {
+        
+        stage('Clone'){
+            steps{
+                git branch: 'final', url: 'https://github.com/andm90/panda_application'
+            }
+            
+        }        
+        stage('Build') {
             steps {
                 // Get some code from a GitHub repository
-                checkout scm
-            }
-        }
-        stage('Build and Junit') {
-            steps {
+                
+
                 // Run Maven on a Unix agent.
-                sh "mvn clean install"
+                sh "mvn -Dmaven.test.failure.ignore=true clean install"
+
+                // To run Maven on a Windows agent, use
+                // bat "mvn -Dmaven.test.failure.ignore=true clean package"
             }
         }
-        stage('Build Docker image'){
+        stage('Test') {
             steps {
-                sh "mvn package -Pdocker"
-            }
-        }
-        stage('Run Docker app') {
-            steps {
-                sh "docker run -d -p 0.0.0.0:8080:8080 --name pandaapp -t ${IMAGE}:${VERSION}"
-            }
-        }
-        stage('Test Selenium') {
-            steps {
+                // Get some code from a GitHub repository
+                
+                // Run Maven on a Unix agent.
                 sh "mvn test -Pselenium"
+
+                // To run Maven on a Windows agent, use
+                // bat "mvn -Dmaven.test.failure.ignore=true clean package"
             }
-        }
-        stage('Deploy jar to artifactory') {
-            steps {
-                configFileProvider([configFile(fileId: '9d1ed313-ea70-4fa9-9934-7108c53eca75', variable: 'MAVEN_GLOBAL_SETTINGS')]) {
-                    sh "mvn -gs $MAVEN_GLOBAL_SETTINGS deploy -Dmaven.test.skip=true -e"
+        
+            post {
+                // If Maven was able to run the tests, even if some of the test
+                // failed, record the test results and archive the jar file.
+                success {
+                    junit '**/target/surefire-reports/TEST-*.xml'
+                    archiveArtifacts 'target/*.jar'
                 }
-            } 
-        }
-        stage('Run terraform') {
-            steps {
-                dir('infrastructure/terraform') {                
-                    sh 'terraform init && terraform apply -var-file ./panda.tfvars -auto-approve '
-                } 
             }
-        }
-        stage('Copy Ansible role') {
-               steps {
-                   sh 'cp -r infrastructure/ansible/panda/ /etc/ansible/roles/'
-                }
-        }
-        stage('Run Ansible') {
-               steps {
-                dir('infrastructure/ansible') {                
-                    sh 'chmod 600 ../panda.pem'
-                    sh 'ansible-playbook -i ./inventory playbook.yml'
-                } 
-            }
-        }
-    }
-    post { 
-        always { 
-            sh 'docker stop pandaapp'
-            deleteDir()
         }
     }
 }
