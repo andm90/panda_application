@@ -30,7 +30,7 @@ pipeline {
 
         stage('Build Docker image'){
             steps{
-                sh "mvn package-Pdocker"
+                sh "mvn package -Pdocker"
             }
         }
         stage('Run Docker app'){
