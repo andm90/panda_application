@@ -66,7 +66,8 @@ pipeline {
 
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws']]) {
 
-                         sh 'terraform init && terraform apply -auto-approve'
+                         sh 'terraform init && terraform apply -auto-approve -var-file panda.tfvars'
+
                     }  
                 
                 }
@@ -87,12 +88,33 @@ pipeline {
                 sh 'ansible-playbook -i ./inventory playbook.yml -e ansible_python_interpreter=/usr/bin/python3'
             }
         }
+        stage('Remove environment') {
+            steps {
+                input 'Remove environment'
+                dir('infrastructure/terraform') { 
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws']]) {
+                        sh 'terraform destroy -auto-approve -var-file panda.tfvars'
+                    }
+                }
+            }
+        }
+
     }
     post {
 
-            success {
-                sh 'docker stop pandaapp'
-                deleteDir()
-            }
+        success {
+            sh 'docker stop pandaapp'
+            deleteDir()
         }
+        failure {
+            dir('infrastructure/terraform') { 
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS']]) {
+                    sh 'terraform destroy -auto-approve -var-file panda.tfvars'
+                }
+            }
+            sh 'docker stop pandaapp'
+            deleteDir()
+        }
+    }
+
 }
