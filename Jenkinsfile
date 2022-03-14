@@ -38,11 +38,13 @@ pipeline {
                 sh "docker run -d -p 0.0.0.0:8080:8080 --name pandaapp ${IMAGE}:${VERSION}"
             }
         }
+        /*
         stage('Test Selenium'){
             steps{
                 sh "mvn test -Pselenium"
             }
         }
+        */
         stage('Deploy jar to artifactory'){
             steps{
                 
