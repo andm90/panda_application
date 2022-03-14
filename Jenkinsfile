@@ -108,7 +108,7 @@ pipeline {
         }
         failure {
             dir('infrastructure/terraform') { 
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'AWS']]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws']]) {
                     sh 'terraform destroy -auto-approve -var-file panda.tfvars'
                 }
             }
